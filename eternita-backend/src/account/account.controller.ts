@@ -1,64 +1,94 @@
-import {Body,Controller,Get,Post,Req,UseGuards,
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
 } from "@nestjs/common";
 import { getDb } from "../config/firebase";
+import { initializeFirebase } from "../config/firebase";
 import { AuthGuard } from "../auth/auth.guard";
-
-interface RegisterOwnerDto {
-  name: string;
-  handle: string;
-}
+import { RegisterOwnerDto } from "./dto/register-owner.dto";
 
 @Controller("auth")
-@UseGuards(AuthGuard)
 export class AccountController {
   @Post("register-owner")
-  async registerOwner(
-    @Req() request: any,
-    @Body() body: RegisterOwnerDto
-  ) {
-    const db = getDb();
-    const uid = request.uid;
+  async registerOwner(@Body() body: RegisterOwnerDto) {
+    initializeFirebase();
+    const { getAuth } = await import("firebase-admin/auth");
+    const auth = getAuth();
+    let user: Awaited<ReturnType<typeof auth.createUser>>;
 
-    const userRef = db.collection("users").doc(uid);
-    const snapshot = await userRef.get();
-
-    if (snapshot.exists) {
-      return {
-        error: "Profile already exists",
-      };
+    try {
+      user = await auth.createUser({
+        email: body.email,
+        password: body.password,
+        displayName: body.displayName,
+      });
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "auth/email-already-exists") {
+        throw new ConflictException("An account with this email already exists.");
+      }
+      if (code === "auth/invalid-email" || code === "auth/weak-password") {
+        throw new BadRequestException("The email or password is invalid.");
+      }
+      throw error;
     }
 
+    const db = getDb();
+    const uid = user.uid;
+    const userRef = db.collection("users").doc(uid);
     const now = new Date();
+    const handle = body.email
+      .split("@", 1)[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "_")
+      .replace(/^_+|_+$/g, "") || uid;
 
-    await userRef.set({
-      role: "owner",
-      name: body.name,
-      handle: body.handle,
-      deceased: false,
-      settings: {
-        reminderTime: "20:00",
-        autoLockMinutes: 5,
-        darkMode: false,
-      },
-      lastSeq: 0,
-      lastHash: "0".repeat(64),
-      createdAt: now,
-    });
+    let profileCreated = false;
+    try {
+      await userRef.create({
+        role: "owner",
+        name: body.displayName,
+        handle,
+        deceased: false,
+        settings: {
+          reminderTime: "20:00",
+          autoLockMinutes: 5,
+          darkMode: false,
+        },
+        lastSeq: 0,
+        lastHash: "0".repeat(64),
+        createdAt: now,
+      });
+      profileCreated = true;
 
-    await userRef.collection("activity").add({
-      action: "registerOwner",
-      at: now,
-    });
+      await userRef.collection("activity").add({
+        action: "registerOwner",
+        at: now,
+      });
+    } catch (error) {
+      if (profileCreated) {
+        await userRef.delete().catch(() => undefined);
+      }
+      await auth.deleteUser(uid).catch(() => undefined);
+      throw error;
+    }
 
     return {
       uid,
       role: "owner",
-      name: body.name,
-      handle: body.handle,
+      name: body.displayName,
+      handle,
     };
   }
 
   @Get("me")
+  @UseGuards(AuthGuard)
   async me(@Req() request: any) {
     const db = getDb();
     const uid = request.uid;

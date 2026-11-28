@@ -63,65 +63,71 @@ export class PeopleController {
     const db = getDb();
     const uid = request.uid;
 
-    const invites = await db
-      .collection("invites")
-      .where("code", "==", body.code)
-      .where("status", "==", "pending")
-      .get();
+    return db.runTransaction(async (transaction) => {
+      const invites = await transaction.get(
+        db
+          .collection("invites")
+          .where("code", "==", body.code)
+          .where("status", "==", "pending")
+          .limit(1),
+      );
 
-    if (invites.empty) {
+      if (invites.empty) {
+        return {
+          error: "Invalid or already used invitation code",
+        };
+      }
+
+      const invite = invites.docs[0];
+      const inviteData = invite.data();
+      const now = new Date();
+      const expiresAt = typeof inviteData.expiresAt?.toDate === "function"
+        ? inviteData.expiresAt.toDate()
+        : new Date(inviteData.expiresAt);
+
+      if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime()) {
+        return {
+          error: "Invitation expired",
+        };
+      }
+
+      const userRef = db.collection("users").doc(uid);
+      const userSnapshot = await transaction.get(userRef);
+
+      if (userSnapshot.exists) {
+        return {
+          error: "This account already has an Alaala profile",
+        };
+      }
+
+      transaction.create(userRef, {
+        role: "recipient",
+        ownerUid: inviteData.ownerUid,
+        name: body.name,
+        handle: inviteData.handle,
+        deceased: false,
+        settings: {
+          reminderTime: "20:00",
+          autoLockMinutes: 5,
+          darkMode: false,
+        },
+        createdAt: now,
+      });
+
+      transaction.update(invite.ref, {
+        status: "used",
+        usedByUid: uid,
+        usedAt: now,
+      });
+
       return {
-        error: "Invalid or already used invitation code",
+        uid,
+        role: "recipient",
+        ownerUid: inviteData.ownerUid,
+        name: body.name,
+        handle: inviteData.handle,
       };
-    }
-
-    const invite = invites.docs[0];
-    const inviteData = invite.data();
-
-    const now = new Date();
-
-    if (inviteData.expiresAt.toDate() < now) {
-      return {
-        error: "Invitation expired",
-      };
-    }
-
-    const userRef = db.collection("users").doc(uid);
-    const userSnapshot = await userRef.get();
-
-    if (userSnapshot.exists) {
-      return {
-        error: "This account already has an Alaala profile",
-      };
-    }
-
-    await userRef.set({
-      role: "recipient",
-      ownerUid: inviteData.ownerUid,
-      name: body.name,
-      handle: inviteData.handle,
-      deceased: false,
-      settings: {
-        reminderTime: "20:00",
-        autoLockMinutes: 5,
-        darkMode: false,
-      },
-      createdAt: now,
     });
-
-    await invite.ref.update({
-      status: "used",
-      usedByUid: uid,
-      usedAt: now,
-    });
-
-    return {
-      uid,
-      role: "recipient",
-      ownerUid: inviteData.ownerUid,
-      name: body.name,
-      handle: inviteData.handle,
-    };
   }
 
   @Get("people")
@@ -134,10 +140,16 @@ export class PeopleController {
       .where("ownerUid", "==", ownerUid)
       .get();
 
-    const people = snapshot.docs.map((doc) => ({
-      uid: doc.id,
-      ...doc.data(),
-    }));
+    const people = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        uid: doc.id,
+        role: data.role,
+        ownerUid: data.ownerUid,
+        name: data.name,
+        handle: data.handle,
+      };
+    });
 
     return { people };
   }

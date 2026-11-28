@@ -6,23 +6,36 @@
   "scripts": {
     "start:dev": "ts-node src/main.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "test:firestore": "firebase emulators:exec --only firestore \"jest --runInBand test/firestore-rules.emulator.test.ts\"",
+    "test:integration": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.cjs --runInBand --verbose test/people-integration.test.ts test/legacy-integration.test.ts test/death-report.integration.test.ts test/hash-chain.integration.test.ts",
+    "test:integration:emulator": "firebase emulators:exec --only firestore \"npm run test:integration\"",
+    "verify:gemini": "ts-node scripts/verify-gemini.ts",
+    "prolog-smoke": "ts-node scripts/prolog-smoke.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "@nestjs/common": "^12.5.0",
     "@nestjs/core": "^12.5.0",
     "@nestjs/platform-express": "^12.5.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "dotenv": "^18.0.10",
     "firebase-admin": "^14.5.1",
+    "tau-prolog": "^0.3.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@nestjs/testing": "^12.6.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
+    "@types/supertest": "^7.2.1",
     "jest": "^30.5.2",
+    "supertest": "^7.3.2",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -46,11 +47,15 @@ export class DiaryController {
   @Get(":entryId")
   getOne(
     @Req() request: any,
-    @Param("entryId") entryId: string
+    @Param("entryId") entryId: string,
+    @Query("ownerUid") ownerUid?: string,
+    @Query("access") access: "existence" | "summary" | "full" = "full",
   ) {
-    return this.diaryService.getEntry(
+    return this.diaryService.getEntryForViewer(
       request.uid,
-      entryId
+      ownerUid ?? request.uid,
+      entryId,
+      access,
     );
   }
 
@@ -59,22 +64,32 @@ export class DiaryController {
     @Req() request: any,
     @Param("entryId") entryId: string,
     @Body(new ZodValidationPipe(editEntrySchema))
-    body: EditEntryDto
+    body: EditEntryDto,
   ) {
     return this.diaryService.editEntry(
+      request.uid,
       request.uid,
       entryId,
       body
     );
   }
 
+  @Post(":entryId/publish")
+  publish(
+    @Req() request: any,
+    @Param("entryId") entryId: string,
+  ) {
+    return this.diaryService.publishDraft(request.uid, request.uid, entryId);
+  }
+
   @Patch(":entryId/favorite")
   favorite(
     @Req() request: any,
     @Param("entryId") entryId: string,
-    @Body() body: { isFavorite: boolean }
+    @Body() body: { isFavorite: boolean },
   ) {
     return this.diaryService.setFavorite(
+      request.uid,
       request.uid,
       entryId,
       body.isFavorite
@@ -84,9 +99,10 @@ export class DiaryController {
   @Delete(":entryId")
   hide(
     @Req() request: any,
-    @Param("entryId") entryId: string
+    @Param("entryId") entryId: string,
   ) {
     return this.diaryService.hideEntry(
+      request.uid,
       request.uid,
       entryId
     );

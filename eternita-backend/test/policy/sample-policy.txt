@@ -1,0 +1,4 @@
+POLICY "Maria Legacy Policy" {
+  GRANT existence TO ana FOR entry_1;
+  GRANT summary TO ana FOR entry_2;
+}

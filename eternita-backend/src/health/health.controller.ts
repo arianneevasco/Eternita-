@@ -6,10 +6,7 @@ export class HealthController {
   @Get("database")
   async database() {
     const db = getDb();
-
-    await db.collection("health").doc("connection").set({
-      checkedAt: new Date(),
-    });
+    await db.collection("health").doc("connection").get();
 
     return {
       status: "ok",

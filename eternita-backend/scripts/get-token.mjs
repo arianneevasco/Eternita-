@@ -12,7 +12,7 @@ const password = process.argv[3];
 
 if (!email || !password) {
   console.log("Usage:");
-  console.log("node scripts/get-token.mjs your@email.com yourpassword");
+  console.log("node scripts/get-token.mjs your@example.com yourpassword");
   process.exit(1);
 }
 

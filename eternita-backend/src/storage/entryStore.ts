@@ -6,6 +6,10 @@ import type {
   StoredEntry
 } from "./types.js";
 
+/**
+ * @deprecated This in-memory chain is retained for legacy compatibility and
+ * tests. Firestore diary persistence uses src/diary/entry-hash.ts.
+ */
 export class EntryStore {
   private entries: StoredEntry[] = [];
   private previousHash = "GENESIS";

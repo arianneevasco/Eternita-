@@ -6,11 +6,12 @@ export const entryContentSchema = z.object({
   journal: z.string().min(1).max(100),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   entryTime: z.string().regex(/^\d{2}:\d{2}$/),
+  releaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   mood: z.number().int().min(1).max(5),
   people: z.array(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/)).default([]),
   tags: z.array(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/)).default([]),
   isFavorite: z.boolean().default(false),
-  isDraft: z.boolean().default(false),
+  isDraft: z.boolean().default(true),
   writingMode: z.enum(["verbatim", "lightfix", "review"]).default("verbatim"),
 });
 

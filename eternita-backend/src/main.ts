@@ -1,54 +1,23 @@
 import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
-import { spawn } from "child_process";
-import path from "path";
 
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
 
-function loadPrologAccessRules(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const prologFilePath = path.resolve(
-      __dirname,
-      "../prolog/access_rules.pl"
-    );
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
-    const prolog = spawn("swipl", [
-      "-q",
-      "-f",
-      prologFilePath,
-      "-g",
-      "halt"
-    ]);
+  const port = process.env.PORT ?? 3000;
 
-    prolog.on("error", (error) => {
-      reject(new Error(`Failed to start SWI-Prolog: ${error.message}`));
-    });
+  await app.listen(port);
 
-    prolog.on("exit", (code) => {
-      if (code === 0) {
-        console.log("Prolog access rules loaded successfully.");
-        resolve();
-      } else {
-        reject(
-          new Error(
-            `Prolog access rules failed to load. SWI-Prolog exit code: ${code}`
-          )
-        );
-      }
-    });
-  });
+  console.log(`Eternita backend is running on port ${port}`);
 }
 
-async function startServer() {
-  try {
-    await loadPrologAccessRules();
-
-    console.log("Eternita backend is starting.");
-
-    // Keep your existing server startup code here.
-  } catch (error) {
-    console.error(error);
-    process.exit(1);
-  }
-}
-
-startServer();
+bootstrap();

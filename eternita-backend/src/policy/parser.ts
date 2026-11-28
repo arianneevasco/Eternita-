@@ -160,7 +160,8 @@ export function parsePolicy(
 
     if (
       kind !== "existence" &&
-      kind !== "summary"
+      kind !== "summary" &&
+      kind !== "full"
     ) {
       fail("Unsupported action");
     }
@@ -186,7 +187,7 @@ export function parsePolicy(
     return {
       type: "see",
       allow,
-      kind: kind as "existence" | "summary",
+      kind: kind as "existence" | "summary" | "full",
       by:
         by === "mentioning"
           ? "mentions"

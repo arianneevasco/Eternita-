@@ -28,10 +28,10 @@ must not invent memories.
 
 Eternita has two account roles: **Owner** and **Asker**.
 
-| Account role | Description and permissions |
-| --- | --- |
-| **Owner** | Creates and manages the diary, writes access rules, and chooses registered askers. The owner may assign one or more askers to act as trustees. |
-| **Asker** | A person registered and approved by the owner. An asker may request access to the owner's diary only when the legacy process is active and the owner's rules allow it. Askers cannot create, edit, or delete the owner's entries. |
+| Account role | Description and permissions                                                                                                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Owner**    | Creates and manages the diary, writes access rules, and chooses registered askers. The owner may assign one or more askers to act as trustees.                                                                                    |
+| **Asker**    | A person registered and approved by the owner. An asker may request access to the owner's diary only when the legacy process is active and the owner's rules allow it. Askers cannot create, edit, or delete the owner's entries. |
 
 A **trusted person (trustee)** is an asker chosen by the owner to provide the
 required confirmation and request legacy activation. Trustee is an added duty,
@@ -306,3 +306,16 @@ and events only.
 Wishes or other message in Eternita is personal guidance only. It does not
 replace a Last Will and Testament that meets the legal requirements in the
 Philippines.
+
+## 9. Team Review and Approval
+
+The project proposal and finalized requirements were reviewed and approved by
+all team members. These requirements will be used as the baseline for design,
+implementation, and testing.
+
+| Team member       | Role     | Status   | Date       |
+| ----------------- | -------- | -------- | ---------- |
+| Arianne Evasco    | Backend  | Approved | 2026-11-25 |
+| Lea Marie Gozarin | UI/UX    | Pending  | YYYY-MM-DD |
+| Lyza Gwen Guatno  | QA       | Pending  | YYYY-MM-DD |
+| Lovely Montaño    | Frontend | Approved | 2026-11-25 |

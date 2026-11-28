@@ -6,7 +6,7 @@ export type WritingMode =
 export interface SeeStatement {
   type: "see";
   allow: boolean;
-  kind: "existence" | "summary";
+  kind: "existence" | "summary" | "full";
   by: "mentions" | "tag";
   value: string;
   line: number;

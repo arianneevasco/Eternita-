@@ -1,0 +1,76 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // The backend uses the Admin SDK. It performs all writes after applying
+    // application-level authorization, so client writes remain disabled here.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update, delete: if false;
+
+      match /activity/{activityId} {
+        allow read, write: if false;
+      }
+
+      match /entries/{entryId} {
+        // Only the owner may read raw diary documents. Recipient access is
+        // served by the backend after policy, hidden-state, and release checks.
+        allow read: if isOwner(uid);
+        allow create, update, delete: if false;
+      }
+
+      match /versions/{entryId} {
+        allow read, write: if false;
+
+        match /versions/{versionId} {
+          allow read: if isOwner(uid);
+          allow create, update, delete: if false;
+        }
+      }
+
+      match /policies/{policyId} {
+        // Policy text and compiled decisions are backend-only.
+        allow read, write: if false;
+      }
+
+      match /legacyRequests/{requestId} {
+        // Legacy status is backend-only and must not disclose state directly.
+        allow read, write: if false;
+      }
+
+      match /deathReports/{reportId} {
+        // Death reports, confirmation state, and backend-controlled release
+        // metadata are backend-only.
+        allow read, write: if false;
+      }
+
+      match /aiUseLogs/{logId} {
+        // Logs are written by the backend and cannot be queried or forged by clients.
+        allow read, write: if false;
+      }
+    }
+
+    match /invites/{inviteId} {
+      // Invite codes are redeemed through the authenticated backend flow.
+      allow read, write: if false;
+    }
+
+    match /health/{documentId} {
+      // The backend health probe writes only health/connection via Admin SDK.
+      allow read, write: if false;
+    }
+
+    // Explicit catch-all default deny for future collections.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
