@@ -40,7 +40,7 @@ Eternita/
 | `eternita-backend/src/`          | NestJS backend source code                                                 |
 | `eternita-backend/test/`         | Backend, policy, and Prolog tests                                          |
 | `eternita-backend/prolog/`       | SWI-Prolog access rules used by the backend                                |
-| `eternita-backend/docs/grammar/` | Policy-language grammar and examples                                       |
+| `grammar/`                      | Policy-language grammar and examples                                       |
 | `docs/`                          | Shared project documentation, UML diagrams, requirements, and architecture |
 | `reports/`                       | Progress reports, testing reports, and final project reports               |
 

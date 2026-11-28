@@ -1,162 +1,202 @@
-import { PolicySyntaxError } from "./errors";
+import { PolicySyntaxError } from "./policy-syntax-error";
+import { Token, TokenType } from "./token";
+export {Token, TokenType};
 
-export type TokenType =
-  | "WORD"
-  | "STRING"
-  | "DATE"
-  | "COLON"
-  | "END";
+const KEYWORDS = new Set([
+  "protocol",
+  "grant",
+  "revoke",
+  "may",
+  "see",
+  "existence",
+  "of",
+  "entries",
+  "mentioning",
+  "read",
+  "summary",
+  "full",
+  "tagged",
+  "release",
+  "letter",
+  "to",
+  "when",
+  "date",
+  "transfer",
+  "custody",
+  "if",
+  "trustee",
+  "unavailable",
+  "for",
+  "days",
+  "default",
+  "writing",
+  "mode"
+]);
 
-export interface Token {
-  kind: TokenType;
-  value: string;
-  line: number;
-}
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}/;
+const NUMBER_PATTERN = /^\d+/;
+const NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*/;
 
-const MAX_POLICY_LENGTH = 20000;
-
-export function tokenize(source: string): Token[] {
-  if (source.length > MAX_POLICY_LENGTH) {
-    throw new PolicySyntaxError(
-      `Policy exceeds ${MAX_POLICY_LENGTH} characters`,
-      1
-    );
-  }
-
+export function tokenizePolicy(source: string): Token[] {
   const tokens: Token[] = [];
-  let index = 0;
+
+  let position = 0;
   let line = 1;
+  let column = 1;
 
-  while (index < source.length) {
-    const character = source[index];
-
-    if (character === "\n") {
-      line++;
-      index++;
-      continue;
-    }
-
-    if (/\s/.test(character)) {
-      index++;
-      continue;
-    }
-
-    if (character === "#") {
-      while (index < source.length && source[index] !== "\n") {
-        index++;
+  const advance = (count = 1) => {
+    for (let i = 0; i < count; i++) {
+      if (source[position] === "\n") {
+        line++;
+        column = 1;
+      } else {
+        column++;
       }
+
+      position++;
+    }
+  };
+
+  while (position < source.length) {
+    const character = source[position];
+    const startLine = line;
+    const startColumn = column;
+
+    // Ignore spaces, tabs, and newlines.
+    if (character === " " || character === "\t" || character === "\n" || character === "\r") {
+      advance();
       continue;
     }
 
-    if (character === ":") {
-      tokens.push({
-        kind: "COLON",
-        value: ":",
-        line,
-      });
-      index++;
-      continue;
-    }
-
+    // String literal
     if (character === '"') {
-      const start = index + 1;
-      let end = start;
+      advance();
+      let value = "";
 
-      while (
-        end < source.length &&
-        source[end] !== '"'
-      ) {
-        end++;
+      while (position < source.length && source[position] !== '"') {
+        value += source[position];
+        advance();
       }
 
-      if (end >= source.length) {
+      if (position >= source.length) {
         throw new PolicySyntaxError(
-          "Unterminated string",
-          line
+          "Unterminated string literal.",
+          startLine,
+          startColumn
         );
       }
 
-      const value = source.slice(start, end);
-
-      if (!value.trim()) {
-        throw new PolicySyntaxError(
-          "Quoted text must not be empty",
-          line
-        );
-      }
-
+      advance(); // Closing quote
       tokens.push({
-        kind: "STRING",
+        type: "STRING",
         value,
-        line,
-      });
-
-      index = end + 1;
-      continue;
-    }
-
-    if (/[0-9]/.test(character)) {
-      const start = index;
-
-      while (
-        index < source.length &&
-        /[0-9-]/.test(source[index])
-      ) {
-        index++;
-      }
-
-      const value = source.slice(start, index);
-
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        throw new PolicySyntaxError(
-          `Invalid date: ${value}`,
-          line
-        );
-      }
-
-      tokens.push({
-        kind: "DATE",
-        value,
-        line,
+        line: startLine,
+        column: startColumn
       });
 
       continue;
     }
 
-    if (/[a-zA-Z_]/.test(character)) {
-      const start = index;
+    // Date literal: YYYY-MM-DD
+    const dateMatch = source.slice(position).match(DATE_PATTERN);
 
-      while (
-        index < source.length &&
-        /[a-zA-Z0-9_]/.test(source[index])
-      ) {
-        index++;
-      }
-
-      const value = source
-        .slice(start, index)
-        .toLowerCase();
+    if (dateMatch) {
+      const value = dateMatch[0];
+      advance(value.length);
 
       tokens.push({
-        kind: "WORD",
+        type: "DATE",
         value,
-        line,
+        line: startLine,
+        column: startColumn
       });
 
       continue;
     }
 
+    // Number literal
+    const numberMatch = source.slice(position).match(NUMBER_PATTERN);
+
+    if (numberMatch) {
+      const value = numberMatch[0];
+      advance(value.length);
+
+      tokens.push({
+        type: "NUMBER",
+        value,
+        line: startLine,
+        column: startColumn
+      });
+
+      continue;
+    }
+
+    // Keyword or name
+    const nameMatch = source.slice(position).match(NAME_PATTERN);
+
+    if (nameMatch) {
+      const value = nameMatch[0];
+      advance(value.length);
+
+      const type: TokenType = KEYWORDS.has(value.toLowerCase())
+        ? "KEYWORD"
+        : "NAME";
+
+      tokens.push({
+        type,
+        value,
+        line: startLine,
+        column: startColumn
+      });
+
+      continue;
+    }
+
+    // Two-character operator: >=
+    if (source.startsWith(">=", position)) {
+      advance(2);
+
+      tokens.push({
+        type: "SYMBOL",
+        value: ">=",
+        line: startLine,
+        column: startColumn
+      });
+
+      continue;
+    }
+
+    // Symbols
+    if (":;,(){}".includes(character)) {
+      advance();
+
+      tokens.push({
+        type: "SYMBOL",
+        value: character,
+        line: startLine,
+        column: startColumn
+      });
+
+      continue;
+    }
+
+    // Unknown character
     throw new PolicySyntaxError(
-      `Unexpected character: ${character}`,
-      line
+      `Unknown character '${character}'.`,
+      startLine,
+      startColumn
     );
   }
 
   tokens.push({
-    kind: "END",
+    type: "EOF",
     value: "",
     line,
+    column
   });
 
   return tokens;
 }
+
+// Parser compatibility alias.
+export const tokenize = tokenizePolicy;
